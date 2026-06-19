@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Expense Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TravelExp">
+<meta name="theme-color" content="#0f3460">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    color: white;
+    padding: 20px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  header p { font-size: 0.85rem; opacity: 0.8; }
+  .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+  .tabs {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    background: white;
+    color: #666;
+    transition: all 0.2s;
+  }
+  .tab.active { background: #0f3460; color: white; }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 16px; color: #0f3460; }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+  label:first-child { margin-top: 0; }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #0f3460;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  .btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: #0f3460;
+    color: white;
+    width: 100%;
+    margin-top: 16px;
+  }
+  .btn-primary:hover { background: #1a4a8a; }
+  .btn-danger {
+    background: #e74c3c;
+    color: white;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-secondary {
+    background: #eee;
+    color: #333;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .converter-result {
+    background: #e8f4f8;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f3460;
+  }
+  .rate-status {
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 8px;
+    padding: 6px;
+    border-radius: 6px;
+  }
+  .rate-status.live { color: #27ae60; background: #eafaf1; }
+  .rate-status.offline { color: #e67e22; background: #fef5e7; }
+  .rate-status.loading { color: #3498db; background: #eaf2f8; }
+  .expense-item {
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
+  .expense-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .expense-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .expense-amount {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f3460;
+  }
+  .expense-amount-home {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 400;
+  }
+  .expense-category {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+  }
+  .expense-details {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+  }
+  .expense-details span { margin-right: 12px; }
+  .expense-note {
+    font-size: 0.85rem;
+    color: #888;
+    font-style: italic;
+    margin-top: 4px;
+  }
+  .expense-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .summary-box {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .summary-box .amount {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f3460;
+  }
+  .summary-box .label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 2px;
+  }
+  .category-breakdown { margin-top: 12px; }
+  .cat-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+  }
+  .cat-bar-label { width: 120px; font-weight: 600; }
+  .cat-bar-track {
+    flex: 1;
+    height: 20px;
+    background: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 10px;
+  }
+  .cat-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s;
+  }
+  .cat-bar-amount { width: 80px; text-align: right; font-weight: 600; }
+  .card-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .card-item .card-info { font-weight: 600; }
+  .card-item .card-type { font-size: 0.8rem; color: #888; }
+  .hidden { display: none !important; }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #aaa;
+  }
+  .empty-state p { margin-top: 8px; font-size: 0.9rem; }
+  .trip-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .trip-selector select { flex: 1; }
+  .trip-selector .btn { margin-top: 0; white-space: nowrap; }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .filter-row select { flex: 1; }
+  .refresh-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .refresh-btn:hover { background: #219a52; }
+  .refresh-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Travel Expense Tracker</h1>
+  <p>Track your spending abroad</p>
+</header>
+
+<div class="container">
+  <div class="trip-selector">
+    <select id="tripSelect" onchange="switchTrip()"></select>
+    <button class="btn btn-secondary" onclick="newTrip()">+ Trip</button>
+    <button class="btn btn-danger" onclick="deleteTrip()">Delete</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('add')">Add</button>
+    <button class="tab" onclick="showTab('expenses')">Expenses</button>
+    <button class="tab" onclick="showTab('convert')">Convert</button>
+    <button class="tab" onclick="showTab('summary')">Summary</button>
+    <button class="tab" onclick="showTab('settings')">Settings</button>
+  </div>
+
+  <!-- Add Expense Tab -->
+  <div id="tab-add" class="tab-content">
+    <div class="card">
+      <h2>New Expense</h2>
+      <div class="row">
+        <div>
+          <label>Amount</label>
+          <input type="number" id="expAmount" step="0.01" placeholder="0.00">
+        </div>
+        <div>
+          <label>Currency</label>
+          <select id="expCurrency">
+            <option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option>
+          </select>
+        </div>
+      </div>
+      <label>Category</label>
+      <select id="expCategory">
+        <option value="hotel">Hotel</option>
+        <option value="transportation">Transportation</option>
+        <option value="food">Food & Drink</option>
+        <option value="shopping">Shopping</option>
+        <option value="entertainment">Entertainment</option>
+        <option value="other">Other</option>
+      </select>
+      <label>Payment Type</label>
+      <select id="expPayment" onchange="toggleCardSelect()">
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+      </select>
+      <div id="cardSelectGroup" class="hidden">
+        <label>Card</label>
+        <select id="expCard"></select>
+      </div>
+      <label>Date</label>
+      <input type="date" id="expDate">
+      <label>Note</label>
+      <textarea id="expNote" placeholder="e.g. Taxi from airport to hotel"></textarea>
+      <button class="btn btn-primary" onclick="addExpense()">Add Expense</button>
+    </div>
+  </div>
+
+  <!-- Expenses List Tab -->
+  <div id="tab-expenses" class="tab-content hidden">
+    <div class="card">
+      <h2>Expenses</h2>
+      <div class="filter-row">
+        <select id="filterCategory" onchange="renderExpenses()">
+          <option value="all">All Categories</option>
+          <option value="hotel">Hotel</option>
+          <option value="transportation">Transportation</option>
+          <option value="food">Food & Drink</option>
+          <option value="shopping">Shopping</option>
+          <option value="entertainment">Entertainment</option>
+          <option value="other">Other</option>
+        </select>
+        <select id="filterPayment" onchange="renderExpenses()">
+          <option value="all">All Payments</option>
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+        </select>
+      </div>
+      <div id="expenseList"></div>
+    </div>
+  </div>
+
+  <!-- Currency Converter Tab -->
+  <div id="tab-convert" class="tab-content hidden">
+    <div class="card">
+      <h2>Currency Converter</h2>
+      <div class="row">
+        <div>
+          <label>Amount</label>
+          <input type="number" id="convAmount" step="0.01" placeholder="0.00" oninput="convert()">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>From</label>
+          <select id="convFrom" onchange="convert()"><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option></select>
+        </div>
+        <div>
+          <label>To</label>
+          <select id="convTo" onchange="convert()"><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option></select>
+        </div>
+      </div>
+      <button class="btn btn-secondary" onclick="swapCurrencies()" style="margin-top:12px;width:100%">Swap</button>
+      <div class="converter-result" id="convResult">Enter amount to convert</div>
+      <div class="rate-status loading" id="rateStatus">Checking for live rates...</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="fetchLiveRates()">Refresh Live Rates</button>
+    </div>
+    <div class="card">
+      <h2>Custom Exchange Rate</h2>
+      <p style="font-size:0.85rem;color:#666;margin-bottom:12px">Override any rate for more accuracy.</p>
+      <div class="row">
+        <div>
+          <label>From</label>
+          <select id="customFrom"><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option></select>
+        </div>
+        <div>
+          <label>To</label>
+          <select id="customTo"><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option></select>
+        </div>
+      </div>
+      <label>Rate (1 From = ? To)</label>
+      <input type="number" id="customRate" step="0.0001" placeholder="e.g. 7.25">
+      <button class="btn btn-primary" onclick="setCustomRate()">Set Rate</button>
+    </div>
+  </div>
+
+  <!-- Summary Tab -->
+  <div id="tab-summary" class="tab-content hidden">
+    <div class="card">
+      <h2>Trip Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="amount" id="sumTotal">0</div>
+          <div class="label">Total (Home Currency)</div>
+        </div>
+        <div class="summary-box">
+          <div class="amount" id="sumCount">0</div>
+          <div class="label">Transactions</div>
+        </div>
+        <div class="summary-box">
+          <div class="amount" id="sumCash">0</div>
+          <div class="label">Cash</div>
+        </div>
+        <div class="summary-box">
+          <div class="amount" id="sumCard">0</div>
+          <div class="label">Card</div>
+        </div>
+      </div>
+      <h2>By Category</h2>
+      <div id="categoryBreakdown" class="category-breakdown"></div>
+    </div>
+  </div>
+
+  <!-- Settings Tab -->
+  <div id="tab-settings" class="tab-content hidden">
+    <div class="card">
+      <h2>Home Currency</h2>
+      <select id="homeCurrency" onchange="saveSettings()"><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option><option value="JPY">JPY - Japanese Yen</option><option value="CNY">CNY - Chinese Yuan</option><option value="KRW">KRW - Korean Won</option><option value="TWD">TWD - Taiwan Dollar</option><option value="HKD">HKD - Hong Kong Dollar</option><option value="SGD">SGD - Singapore Dollar</option><option value="AUD">AUD - Australian Dollar</option><option value="CAD">CAD - Canadian Dollar</option><option value="THB">THB - Thai Baht</option><option value="MYR">MYR - Malaysian Ringgit</option><option value="PHP">PHP - Philippine Peso</option><option value="IDR">IDR - Indonesian Rupiah</option><option value="VND">VND - Vietnamese Dong</option><option value="INR">INR - Indian Rupee</option><option value="NZD">NZD - New Zealand Dollar</option><option value="CHF">CHF - Swiss Franc</option><option value="SEK">SEK - Swedish Krona</option><option value="MXN">MXN - Mexican Peso</option><option value="BRL">BRL - Brazilian Real</option><option value="AED">AED - UAE Dirham</option><option value="ZAR">ZAR - South African Rand</option><option value="TRY">TRY - Turkish Lira</option><option value="MNT">MNT - Mongolian Tugrik</option><option value="RUB">RUB - Russian Ruble</option><option value="KZT">KZT - Kazakh Tenge</option><option value="UZS">UZS - Uzbek Som</option><option value="KGS">KGS - Kyrgyz Som</option><option value="TJS">TJS - Tajik Somoni</option><option value="TMT">TMT - Turkmen Manat</option><option value="GEL">GEL - Georgian Lari</option><option value="AZN">AZN - Azerbaijani Manat</option><option value="AMD">AMD - Armenian Dram</option></select>
+    </div>
+    <div class="card">
+      <h2>My Cards</h2>
+      <div id="cardList"></div>
+      <label>Card Nickname</label>
+      <input type="text" id="newCardName" placeholder="e.g. Chase Sapphire">
+      <label>Card Type</label>
+      <select id="newCardType">
+        <option value="Visa">Visa</option>
+        <option value="Mastercard">Mastercard</option>
+        <option value="Amex">Amex</option>
+        <option value="Discover">Discover</option>
+        <option value="UnionPay">UnionPay</option>
+        <option value="JCB">JCB</option>
+        <option value="Other">Other</option>
+      </select>
+      <button class="btn btn-primary" onclick="addCard()">Add Card</button>
+    </div>
+    <div class="card">
+      <h2>Custom Categories</h2>
+      <div id="customCatList"></div>
+      <label>Category Name</label>
+      <input type="text" id="newCatName" placeholder="e.g. Souvenirs">
+      <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CURRENCIES = {
+  USD: { name: 'US Dollar', symbol: '$' },
+  EUR: { name: 'Euro', symbol: '€' },
+  GBP: { name: 'British Pound', symbol: '£' },
+  JPY: { name: 'Japanese Yen', symbol: '¥' },
+  CNY: { name: 'Chinese Yuan', symbol: '¥' },
+  KRW: { name: 'Korean Won', symbol: '₩' },
+  TWD: { name: 'Taiwan Dollar', symbol: 'NT$' },
+  HKD: { name: 'Hong Kong Dollar', symbol: 'HK$' },
+  SGD: { name: 'Singapore Dollar', symbol: 'S$' },
+  AUD: { name: 'Australian Dollar', symbol: 'A$' },
+  CAD: { name: 'Canadian Dollar', symbol: 'C$' },
+  THB: { name: 'Thai Baht', symbol: '฿' },
+  MYR: { name: 'Malaysian Ringgit', symbol: 'RM' },
+  PHP: { name: 'Philippine Peso', symbol: '₱' },
+  IDR: { name: 'Indonesian Rupiah', symbol: 'Rp' },
+  VND: { name: 'Vietnamese Dong', symbol: '₫' },
+  INR: { name: 'Indian Rupee', symbol: '₹' },
+  NZD: { name: 'New Zealand Dollar', symbol: 'NZ$' },
+  CHF: { name: 'Swiss Franc', symbol: 'CHF' },
+  SEK: { name: 'Swedish Krona', symbol: 'kr' },
+  MXN: { name: 'Mexican Peso', symbol: 'MX$' },
+  BRL: { name: 'Brazilian Real', symbol: 'R$' },
+  AED: { name: 'UAE Dirham', symbol: 'AED' },
+  ZAR: { name: 'South African Rand', symbol: 'R' },
+  TRY: { name: 'Turkish Lira', symbol: '₺' },
+  MNT: { name: 'Mongolian Tugrik', symbol: '₮' },
+  RUB: { name: 'Russian Ruble', symbol: '₽' },
+  KZT: { name: 'Kazakh Tenge', symbol: '₸' },
+  UZS: { name: 'Uzbek Som', symbol: 'сўм' },
+  KGS: { name: 'Kyrgyz Som', symbol: 'сом' },
+  TJS: { name: 'Tajik Somoni', symbol: 'SM' },
+  TMT: { name: 'Turkmen Manat', symbol: 'T' },
+  GEL: { name: 'Georgian Lari', symbol: '₾' },
+  AZN: { name: 'Azerbaijani Manat', symbol: '₼' },
+  AMD: { name: 'Armenian Dram', symbol: '֏' },
+};
+
+// Fallback rates relative to USD (approximate)
+const BASE_RATES = {
+  USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149.5, CNY: 7.24,
+  KRW: 1310, TWD: 31.5, HKD: 7.82, SGD: 1.34, AUD: 1.53,
+  CAD: 1.36, THB: 35.2, MYR: 4.72, PHP: 56.2, IDR: 15650,
+  VND: 24500, INR: 83.5, NZD: 1.64, CHF: 0.88, SEK: 10.5,
+  MXN: 17.15, BRL: 4.95, AED: 3.67, ZAR: 18.6, TRY: 30.2,
+  MNT: 3450, RUB: 92, KZT: 460, UZS: 12500, KGS: 89,
+  TJS: 10.9, TMT: 3.5, GEL: 2.7, AZN: 1.7, AMD: 390
+};
+
+let liveRates = null;
+let liveRatesTime = null;
+let usingLiveRates = false;
+
+const CATEGORY_COLORS = {
+  hotel: '#e67e22', transportation: '#3498db', food: '#2ecc71',
+  shopping: '#9b59b6', entertainment: '#e74c3c', other: '#95a5a6'
+};
+
+const CATEGORY_LABELS = {
+  hotel: 'Hotel', transportation: 'Transportation', food: 'Food & Drink',
+  shopping: 'Shopping', entertainment: 'Entertainment', other: 'Other'
+};
+
+let state = loadState();
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('travelExpenseTracker');
+    if (saved) return JSON.parse(saved);
+  } catch (e) { console.warn('localStorage unavailable, using in-memory state'); }
+  return {
+    homeCurrency: 'USD',
+    cards: [],
+    customCategories: [],
+    customRates: {},
+    trips: [{ id: Date.now(), name: 'My Trip', expenses: [] }],
+    currentTripId: null,
+  };
+}
+
+function saveState() {
+  try { localStorage.setItem('travelExpenseTracker', JSON.stringify(state)); }
+  catch (e) {}
+}
+
+function currentTrip() {
+  return state.trips.find(t => t.id === state.currentTripId) || state.trips[0];
+}
+
+function getAllCategories() {
+  const cats = { ...CATEGORY_LABELS };
+  state.customCategories.forEach(c => { cats[c.id] = c.name; });
+  return cats;
+}
+
+function getAllCategoryColors() {
+  const colors = { ...CATEGORY_COLORS };
+  const customColors = ['#1abc9c', '#f39c12', '#8e44ad', '#2c3e50', '#d35400', '#c0392b'];
+  state.customCategories.forEach((c, i) => {
+    colors[c.id] = customColors[i % customColors.length];
+  });
+  return colors;
+}
+
+function populateCurrencySelects() {
+  const selects = ['expCurrency', 'convFrom', 'convTo', 'homeCurrency', 'customFrom', 'customTo'];
+  const options = Object.entries(CURRENCIES).map(([code, c]) =>
+    `<option value="${code}">${code} - ${c.name}</option>`
+  ).join('');
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = options;
+  });
+  document.getElementById('homeCurrency').value = state.homeCurrency;
+  document.getElementById('expCurrency').value = state.homeCurrency;
+  document.getElementById('convFrom').value = 'USD';
+  document.getElementById('convTo').value = state.homeCurrency;
+}
+
+function populateCategorySelects() {
+  const cats = getAllCategories();
+  const options = Object.entries(cats).map(([id, name]) =>
+    `<option value="${id}">${name}</option>`
+  ).join('');
+  document.getElementById('expCategory').innerHTML = options;
+  document.getElementById('filterCategory').innerHTML =
+    '<option value="all">All Categories</option>' + options;
+}
+
+// --- Live Currency Rates ---
+
+async function fetchLiveRates() {
+  const statusEl = document.getElementById('rateStatus');
+  const btn = document.getElementById('refreshBtn');
+  statusEl.className = 'rate-status loading';
+  statusEl.textContent = 'Fetching live rates...';
+  btn.disabled = true;
+
+  const apis = [
+    {
+      name: 'ExchangeRate-API',
+      url: 'https://open.er-api.com/v6/latest/USD',
+      parse: (data) => data.result === 'success' ? data.rates : null
+    },
+    {
+      name: 'Currency-API',
+      url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+      parse: (data) => {
+        if (!data.usd) return null;
+        const rates = {};
+        for (const [key, val] of Object.entries(data.usd)) {
+          rates[key.toUpperCase()] = val;
+        }
+        return rates;
+      }
+    }
+  ];
+
+  for (const api of apis) {
+    try {
+      const res = await fetch(api.url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rates = api.parse(data);
+      if (rates) {
+        liveRates = rates;
+        liveRatesTime = new Date();
+        usingLiveRates = true;
+        const timeStr = liveRatesTime.toLocaleTimeString();
+        statusEl.className = 'rate-status live';
+        statusEl.innerHTML = `Live rates active (${api.name}) &mdash; updated ${timeStr}`;
+        btn.disabled = false;
+        convert();
+        return;
+      }
+    } catch (e) {
+      console.warn(`Failed to fetch from ${api.name}:`, e);
+    }
+  }
+
+  usingLiveRates = false;
+  statusEl.className = 'rate-status offline';
+  statusEl.textContent = 'Could not fetch live rates — using offline estimates';
+  btn.disabled = false;
+}
+
+function getRate(from, to) {
+  if (from === to) return 1;
+  const key = `${from}_${to}`;
+  const reverseKey = `${to}_${from}`;
+  if (state.customRates[key]) return state.customRates[key];
+  if (state.customRates[reverseKey]) return 1 / state.customRates[reverseKey];
+
+  if (usingLiveRates && liveRates) {
+    const fromRate = liveRates[from];
+    const toRate = liveRates[to];
+    if (fromRate && toRate) return toRate / fromRate;
+  }
+
+  return (BASE_RATES[to] || 1) / (BASE_RATES[from] || 1);
+}
+
+function convertAmount(amount, from, to) {
+  return amount * getRate(from, to);
+}
+
+function formatCurrency(amount, code) {
+  const c = CURRENCIES[code];
+  const symbol = c ? c.symbol : code;
+  const wholeOnly = ['JPY','KRW','VND','IDR','UZS','KZT','MNT','AMD'].includes(code);
+  if (wholeOnly) {
+    return symbol + Math.round(amount).toLocaleString();
+  }
+  return symbol + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Tabs
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  const tabs = ['add', 'expenses', 'convert', 'summary', 'settings'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  if (name === 'expenses') renderExpenses();
+  if (name === 'summary') renderSummary();
+  if (name === 'settings') renderSettings();
+}
+
+// Trips
+function renderTrips() {
+  const sel = document.getElementById('tripSelect');
+  sel.innerHTML = state.trips.map(t =>
+    `<option value="${t.id}">${t.name}</option>`
+  ).join('');
+  if (!state.currentTripId && state.trips.length) state.currentTripId = state.trips[0].id;
+  sel.value = state.currentTripId;
+}
+
+function switchTrip() {
+  state.currentTripId = parseInt(document.getElementById('tripSelect').value);
+  saveState();
+  renderExpenses();
+  renderSummary();
+}
+
+function newTrip() {
+  const name = prompt('Trip name:');
+  if (!name) return;
+  const trip = { id: Date.now(), name, expenses: [] };
+  state.trips.push(trip);
+  state.currentTripId = trip.id;
+  saveState();
+  renderTrips();
+}
+
+function deleteTrip() {
+  if (state.trips.length <= 1) return alert('You need at least one trip.');
+  if (!confirm('Delete this trip and all its expenses?')) return;
+  state.trips = state.trips.filter(t => t.id !== state.currentTripId);
+  state.currentTripId = state.trips[0].id;
+  saveState();
+  renderTrips();
+  renderExpenses();
+}
+
+// Expenses
+function toggleCardSelect() {
+  const isCard = document.getElementById('expPayment').value === 'card';
+  document.getElementById('cardSelectGroup').classList.toggle('hidden', !isCard);
+}
+
+function refreshCardSelect() {
+  const sel = document.getElementById('expCard');
+  sel.innerHTML = state.cards.length
+    ? state.cards.map((c, i) => `<option value="${i}">${c.nickname} (${c.type})</option>`).join('')
+    : '<option value="">No cards added</option>';
+}
+
+function addExpense() {
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  if (!amount || amount <= 0) return alert('Please enter a valid amount.');
+  const currency = document.getElementById('expCurrency').value;
+  const category = document.getElementById('expCategory').value;
+  const payment = document.getElementById('expPayment').value;
+  const date = document.getElementById('expDate').value || new Date().toISOString().split('T')[0];
+  const note = document.getElementById('expNote').value.trim();
+
+  let cardInfo = null;
+  if (payment === 'card') {
+    const cardIdx = parseInt(document.getElementById('expCard').value);
+    if (state.cards[cardIdx]) {
+      cardInfo = { ...state.cards[cardIdx] };
+    }
+  }
+
+  const expense = {
+    id: Date.now(),
+    amount, currency, category, payment,
+    card: cardInfo, date, note,
+    homeAmount: convertAmount(amount, currency, state.homeCurrency),
+    homeCurrency: state.homeCurrency
+  };
+
+  currentTrip().expenses.push(expense);
+  saveState();
+
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expNote').value = '';
+  alert('Expense added!');
+}
+
+function renderExpenses() {
+  const list = document.getElementById('expenseList');
+  const trip = currentTrip();
+  const filterCat = document.getElementById('filterCategory').value;
+  const filterPay = document.getElementById('filterPayment').value;
+
+  let expenses = [...trip.expenses].sort((a, b) => b.date.localeCompare(a.date));
+  if (filterCat !== 'all') expenses = expenses.filter(e => e.category === filterCat);
+  if (filterPay !== 'all') expenses = expenses.filter(e => e.payment === filterPay);
+
+  if (!expenses.length) {
+    list.innerHTML = '<div class="empty-state"><p>No expenses yet</p></div>';
+    return;
+  }
+
+  const cats = getAllCategories();
+  const colors = getAllCategoryColors();
+
+  list.innerHTML = expenses.map(e => `
+    <div class="expense-item">
+      <div class="expense-header">
+        <div>
+          <div class="expense-amount">
+            ${formatCurrency(e.amount, e.currency)}
+            <span class="expense-amount-home">(${formatCurrency(e.homeAmount, e.homeCurrency)})</span>
+          </div>
+        </div>
+        <span class="expense-category" style="background:${colors[e.category] || '#95a5a6'}">
+          ${cats[e.category] || e.category}
+        </span>
+      </div>
+      <div class="expense-details">
+        <span>${e.date}</span>
+        <span>${e.payment === 'card' && e.card ? e.card.nickname + ' (' + e.card.type + ')' : 'Cash'}</span>
+      </div>
+      ${e.note ? `<div class="expense-note">${e.note}</div>` : ''}
+      <div class="expense-actions">
+        <button class="btn btn-danger" onclick="deleteExpense(${e.id})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteExpense(id) {
+  const trip = currentTrip();
+  trip.expenses = trip.expenses.filter(e => e.id !== id);
+  saveState();
+  renderExpenses();
+}
+
+// Converter
+function convert() {
+  const amount = parseFloat(document.getElementById('convAmount').value);
+  const from = document.getElementById('convFrom').value;
+  const to = document.getElementById('convTo').value;
+  const result = document.getElementById('convResult');
+
+  if (!amount) { result.textContent = 'Enter amount to convert'; return; }
+  const converted = convertAmount(amount, from, to);
+  const rate = getRate(from, to);
+  result.innerHTML = `${formatCurrency(amount, from)} = ${formatCurrency(converted, to)}<br><span style="font-size:0.75rem;font-weight:400;color:#666">1 ${from} = ${rate < 0.01 ? rate.toFixed(6) : rate < 1 ? rate.toFixed(4) : rate.toFixed(2)} ${to}</span>`;
+}
+
+function swapCurrencies() {
+  const from = document.getElementById('convFrom');
+  const to = document.getElementById('convTo');
+  [from.value, to.value] = [to.value, from.value];
+  convert();
+}
+
+function setCustomRate() {
+  const from = document.getElementById('customFrom').value;
+  const to = document.getElementById('customTo').value;
+  const rate = parseFloat(document.getElementById('customRate').value);
+  if (!rate || from === to) return alert('Enter a valid rate for different currencies.');
+  state.customRates[`${from}_${to}`] = rate;
+  saveState();
+  alert(`Rate set: 1 ${from} = ${rate} ${to}`);
+  document.getElementById('customRate').value = '';
+  convert();
+}
+
+// Summary
+function renderSummary() {
+  const trip = currentTrip();
+  const home = state.homeCurrency;
+  let total = 0, cashTotal = 0, cardTotal = 0;
+  const catTotals = {};
+
+  trip.expenses.forEach(e => {
+    const amt = e.homeAmount;
+    total += amt;
+    if (e.payment === 'cash') cashTotal += amt;
+    else cardTotal += amt;
+    catTotals[e.category] = (catTotals[e.category] || 0) + amt;
+  });
+
+  document.getElementById('sumTotal').textContent = formatCurrency(total, home);
+  document.getElementById('sumCount').textContent = trip.expenses.length;
+  document.getElementById('sumCash').textContent = formatCurrency(cashTotal, home);
+  document.getElementById('sumCard').textContent = formatCurrency(cardTotal, home);
+
+  const cats = getAllCategories();
+  const colors = getAllCategoryColors();
+  const breakdown = document.getElementById('categoryBreakdown');
+
+  if (!Object.keys(catTotals).length) {
+    breakdown.innerHTML = '<div class="empty-state"><p>No data yet</p></div>';
+    return;
+  }
+
+  const maxCat = Math.max(...Object.values(catTotals));
+  breakdown.innerHTML = Object.entries(catTotals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, amt]) => `
+      <div class="cat-bar">
+        <span class="cat-bar-label">${cats[cat] || cat}</span>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill" style="width:${(amt/maxCat*100)}%;background:${colors[cat]||'#95a5a6'}"></div>
+        </div>
+        <span class="cat-bar-amount">${formatCurrency(amt, home)}</span>
+      </div>
+    `).join('');
+}
+
+// Settings
+function saveSettings() {
+  state.homeCurrency = document.getElementById('homeCurrency').value;
+  saveState();
+}
+
+function renderSettings() {
+  renderCardList();
+  renderCustomCategories();
+}
+
+function renderCardList() {
+  const list = document.getElementById('cardList');
+  list.innerHTML = state.cards.length
+    ? state.cards.map((c, i) => `
+        <div class="card-item">
+          <div>
+            <div class="card-info">${c.nickname}</div>
+            <div class="card-type">${c.type}</div>
+          </div>
+          <button class="btn btn-danger" onclick="removeCard(${i})">Remove</button>
+        </div>
+      `).join('')
+    : '<p style="color:#aaa;font-size:0.85rem;margin-bottom:12px">No cards added yet.</p>';
+}
+
+function addCard() {
+  const nickname = document.getElementById('newCardName').value.trim();
+  if (!nickname) return alert('Enter a card nickname.');
+  const type = document.getElementById('newCardType').value;
+  state.cards.push({ nickname, type });
+  saveState();
+  document.getElementById('newCardName').value = '';
+  renderCardList();
+  refreshCardSelect();
+}
+
+function removeCard(idx) {
+  state.cards.splice(idx, 1);
+  saveState();
+  renderCardList();
+  refreshCardSelect();
+}
+
+function renderCustomCategories() {
+  const list = document.getElementById('customCatList');
+  list.innerHTML = state.customCategories.length
+    ? state.customCategories.map((c, i) => `
+        <div class="card-item">
+          <div class="card-info">${c.name}</div>
+          <button class="btn btn-danger" onclick="removeCategory(${i})">Remove</button>
+        </div>
+      `).join('')
+    : '<p style="color:#aaa;font-size:0.85rem;margin-bottom:12px">No custom categories.</p>';
+}
+
+function addCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  if (!name) return alert('Enter a category name.');
+  const id = name.toLowerCase().replace(/\s+/g, '_');
+  if (getAllCategories()[id]) return alert('Category already exists.');
+  state.customCategories.push({ id, name });
+  saveState();
+  document.getElementById('newCatName').value = '';
+  renderCustomCategories();
+  populateCategorySelects();
+}
+
+function removeCategory(idx) {
+  state.customCategories.splice(idx, 1);
+  saveState();
+  renderCustomCategories();
+  populateCategorySelects();
+}
+
+// Init
+function init() {
+  if (!state.currentTripId && state.trips.length) {
+    state.currentTripId = state.trips[0].id;
+  }
+  populateCurrencySelects();
+  populateCategorySelects();
+  renderTrips();
+  refreshCardSelect();
+  document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+  fetchLiveRates();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
