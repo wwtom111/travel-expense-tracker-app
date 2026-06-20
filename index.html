@@ -465,6 +465,15 @@
       <input type="text" id="newCatName" placeholder="e.g. Souvenirs">
       <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
     </div>
+    <div class="card">
+      <h2>Backup & Restore</h2>
+      <p style="font-size:0.85rem;color:#666;margin-bottom:12px">Export your data as a backup or to view in Excel. Import to restore from a backup.</p>
+      <button class="btn btn-primary" onclick="exportJSON()" style="background:#27ae60">Export Backup (JSON)</button>
+      <button class="btn btn-primary" onclick="exportCSV()" style="background:#2980b9">Export Expenses (CSV)</button>
+      <button class="btn btn-primary" onclick="exportCurrentTripCSV()" style="background:#8e44ad">Export Current Trip (CSV)</button>
+      <label>Import Backup (JSON)</label>
+      <input type="file" id="importFile" accept=".json" onchange="importJSON(event)" style="padding:8px">
+    </div>
   </div>
 </div>
 
@@ -978,6 +987,93 @@ function removeCategory(idx) {
   saveState();
   renderCustomCategories();
   populateCategorySelects();
+}
+
+// Export / Import
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `travel-expenses-backup-${new Date().toISOString().split('T')[0]}.json`);
+}
+
+function exportCSV() {
+  const rows = [];
+  state.trips.forEach(trip => {
+    trip.expenses.forEach(e => {
+      rows.push(buildCSVRow(trip.name, e));
+    });
+  });
+  downloadCSV(rows, `all-expenses-${new Date().toISOString().split('T')[0]}.csv`);
+}
+
+function exportCurrentTripCSV() {
+  const trip = currentTrip();
+  const rows = trip.expenses.map(e => buildCSVRow(trip.name, e));
+  const safeName = trip.name.replace(/[^a-zA-Z0-9]/g, '-');
+  downloadCSV(rows, `${safeName}-${new Date().toISOString().split('T')[0]}.csv`);
+}
+
+function buildCSVRow(tripName, e) {
+  const cats = getAllCategories();
+  return {
+    Trip: tripName,
+    Date: e.date,
+    Amount: e.amount,
+    Currency: e.currency,
+    'Home Amount': e.homeAmount ? e.homeAmount.toFixed(2) : '',
+    'Home Currency': e.homeCurrency || state.homeCurrency,
+    Category: cats[e.category] || e.category,
+    Payment: e.payment,
+    Card: e.card ? `${e.card.nickname} (${e.card.type})` : '',
+    Note: e.note || ''
+  };
+}
+
+function downloadCSV(rows, filename) {
+  if (!rows.length) return alert('No expenses to export.');
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => `"${String(r[h]).replace(/"/g, '""')}"`).join(','))
+  ].join('\n');
+  downloadBlob(new Blob([csv], { type: 'text/csv' }), filename);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.trips || !Array.isArray(data.trips)) {
+        return alert('Invalid backup file.');
+      }
+      if (!confirm('This will replace ALL your current data. Are you sure?')) return;
+      state = data;
+      saveState();
+      populateCurrencySelects();
+      populateCategorySelects();
+      renderTrips();
+      refreshCardSelect();
+      renderSettings();
+      alert('Data restored successfully!');
+    } catch (err) {
+      alert('Error reading file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 // Init
