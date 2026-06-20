@@ -260,6 +260,7 @@
     margin-bottom: 12px;
   }
   .filter-row select { flex: 1; }
+  .cat-bar-amount span { display: inline; }
   .refresh-btn {
     background: #27ae60;
     color: white;
@@ -411,7 +412,7 @@
   <!-- Summary Tab -->
   <div id="tab-summary" class="tab-content hidden">
     <div class="card">
-      <h2>Trip Summary</h2>
+      <h2>Current Trip</h2>
       <div class="summary-grid">
         <div class="summary-box">
           <div class="amount" id="sumTotal">0</div>
@@ -430,8 +431,36 @@
           <div class="label">Card</div>
         </div>
       </div>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="amount" id="sumAvg">0</div>
+          <div class="label">Daily Average</div>
+        </div>
+        <div class="summary-box">
+          <div class="amount" id="sumHighest">0</div>
+          <div class="label">Highest Expense</div>
+        </div>
+      </div>
       <h2>By Category</h2>
       <div id="categoryBreakdown" class="category-breakdown"></div>
+    </div>
+    <div class="card">
+      <h2>All Trips Overview</h2>
+      <div class="summary-grid">
+        <div class="summary-box" style="grid-column:1/-1">
+          <div class="amount" id="sumGrandTotal">0</div>
+          <div class="label">Grand Total (All Trips)</div>
+        </div>
+      </div>
+      <div id="tripBreakdown"></div>
+    </div>
+    <div class="card">
+      <h2>Monthly Spending</h2>
+      <div id="monthlyBreakdown"></div>
+    </div>
+    <div class="card">
+      <h2>Monthly by Category</h2>
+      <div id="monthlyCategoryBreakdown"></div>
     </div>
   </div>
 
@@ -875,43 +904,157 @@ function setCustomRate() {
 function renderSummary() {
   const trip = currentTrip();
   const home = state.homeCurrency;
-  let total = 0, cashTotal = 0, cardTotal = 0;
+  const cats = getAllCategories();
+  const colors = getAllCategoryColors();
+
+  // --- Current Trip ---
+  let total = 0, cashTotal = 0, cardTotal = 0, highest = 0;
   const catTotals = {};
+  const dates = new Set();
 
   trip.expenses.forEach(e => {
     const amt = e.homeAmount;
     total += amt;
+    if (amt > highest) highest = amt;
     if (e.payment === 'cash') cashTotal += amt;
     else cardTotal += amt;
     catTotals[e.category] = (catTotals[e.category] || 0) + amt;
+    dates.add(e.date);
   });
 
+  const numDays = dates.size || 1;
   document.getElementById('sumTotal').textContent = formatCurrency(total, home);
   document.getElementById('sumCount').textContent = trip.expenses.length;
   document.getElementById('sumCash').textContent = formatCurrency(cashTotal, home);
   document.getElementById('sumCard').textContent = formatCurrency(cardTotal, home);
+  document.getElementById('sumAvg').textContent = formatCurrency(total / numDays, home);
+  document.getElementById('sumHighest').textContent = formatCurrency(highest, home);
 
-  const cats = getAllCategories();
-  const colors = getAllCategoryColors();
+  // Category breakdown for current trip
   const breakdown = document.getElementById('categoryBreakdown');
-
   if (!Object.keys(catTotals).length) {
     breakdown.innerHTML = '<div class="empty-state"><p>No data yet</p></div>';
-    return;
+  } else {
+    const maxCat = Math.max(...Object.values(catTotals));
+    breakdown.innerHTML = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, amt]) => {
+        const pct = total > 0 ? (amt / total * 100).toFixed(0) : 0;
+        return `
+        <div class="cat-bar">
+          <span class="cat-bar-label">${cats[cat] || cat}</span>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width:${(amt/maxCat*100)}%;background:${colors[cat]||'#95a5a6'}"></div>
+          </div>
+          <span class="cat-bar-amount">${formatCurrency(amt, home)} <span style="color:#aaa;font-size:0.75rem">${pct}%</span></span>
+        </div>`;
+      }).join('');
   }
 
-  const maxCat = Math.max(...Object.values(catTotals));
-  breakdown.innerHTML = Object.entries(catTotals)
-    .sort((a, b) => b[1] - a[1])
-    .map(([cat, amt]) => `
-      <div class="cat-bar">
-        <span class="cat-bar-label">${cats[cat] || cat}</span>
-        <div class="cat-bar-track">
-          <div class="cat-bar-fill" style="width:${(amt/maxCat*100)}%;background:${colors[cat]||'#95a5a6'}"></div>
-        </div>
-        <span class="cat-bar-amount">${formatCurrency(amt, home)}</span>
-      </div>
-    `).join('');
+  // --- All Trips Overview ---
+  let grandTotal = 0;
+  const tripTotals = [];
+  state.trips.forEach(t => {
+    let tt = 0;
+    t.expenses.forEach(e => { tt += e.homeAmount; });
+    grandTotal += tt;
+    tripTotals.push({ name: t.name, total: tt, count: t.expenses.length });
+  });
+
+  document.getElementById('sumGrandTotal').textContent = formatCurrency(grandTotal, home);
+
+  const tripBreakdown = document.getElementById('tripBreakdown');
+  if (!tripTotals.length || grandTotal === 0) {
+    tripBreakdown.innerHTML = '<div class="empty-state"><p>No data yet</p></div>';
+  } else {
+    const maxTrip = Math.max(...tripTotals.map(t => t.total));
+    tripBreakdown.innerHTML = tripTotals
+      .sort((a, b) => b.total - a.total)
+      .map(t => {
+        const pct = grandTotal > 0 ? (t.total / grandTotal * 100).toFixed(0) : 0;
+        return `
+        <div class="cat-bar">
+          <span class="cat-bar-label">${t.name}</span>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width:${maxTrip > 0 ? (t.total/maxTrip*100) : 0}%;background:#0f3460"></div>
+          </div>
+          <span class="cat-bar-amount">${formatCurrency(t.total, home)} <span style="color:#aaa;font-size:0.75rem">${pct}%</span></span>
+        </div>`;
+      }).join('');
+  }
+
+  // --- Monthly Spending (all trips) ---
+  const monthlyTotals = {};
+  const monthlyCatTotals = {};
+
+  state.trips.forEach(t => {
+    t.expenses.forEach(e => {
+      const month = e.date.substring(0, 7); // YYYY-MM
+      monthlyTotals[month] = (monthlyTotals[month] || 0) + e.homeAmount;
+      if (!monthlyCatTotals[month]) monthlyCatTotals[month] = {};
+      monthlyCatTotals[month][e.category] = (monthlyCatTotals[month][e.category] || 0) + e.homeAmount;
+    });
+  });
+
+  const monthlyBreakdown = document.getElementById('monthlyBreakdown');
+  const sortedMonths = Object.keys(monthlyTotals).sort().reverse();
+
+  if (!sortedMonths.length) {
+    monthlyBreakdown.innerHTML = '<div class="empty-state"><p>No data yet</p></div>';
+  } else {
+    const maxMonth = Math.max(...Object.values(monthlyTotals));
+    monthlyBreakdown.innerHTML = sortedMonths.map(month => {
+      const amt = monthlyTotals[month];
+      const label = formatMonthLabel(month);
+      return `
+        <div class="cat-bar">
+          <span class="cat-bar-label">${label}</span>
+          <div class="cat-bar-track">
+            <div class="cat-bar-fill" style="width:${(amt/maxMonth*100)}%;background:#2980b9"></div>
+          </div>
+          <span class="cat-bar-amount">${formatCurrency(amt, home)}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // --- Monthly by Category ---
+  const monthlyCatBreakdown = document.getElementById('monthlyCategoryBreakdown');
+  if (!sortedMonths.length) {
+    monthlyCatBreakdown.innerHTML = '<div class="empty-state"><p>No data yet</p></div>';
+  } else {
+    monthlyCatBreakdown.innerHTML = sortedMonths.map(month => {
+      const catData = monthlyCatTotals[month] || {};
+      const monthTotal = monthlyTotals[month];
+      const label = formatMonthLabel(month);
+      const maxCatMonth = Math.max(...Object.values(catData));
+
+      const bars = Object.entries(catData)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, amt]) => {
+          const pct = monthTotal > 0 ? (amt / monthTotal * 100).toFixed(0) : 0;
+          return `
+          <div class="cat-bar">
+            <span class="cat-bar-label" style="width:100px;font-size:0.8rem">${cats[cat] || cat}</span>
+            <div class="cat-bar-track">
+              <div class="cat-bar-fill" style="width:${(amt/maxCatMonth*100)}%;background:${colors[cat]||'#95a5a6'}"></div>
+            </div>
+            <span class="cat-bar-amount" style="width:90px;font-size:0.8rem">${formatCurrency(amt, home)} <span style="color:#aaa;font-size:0.7rem">${pct}%</span></span>
+          </div>`;
+        }).join('');
+
+      return `
+        <div style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;color:#0f3460">${label} — ${formatCurrency(monthTotal, home)}</div>
+          ${bars}
+        </div>`;
+    }).join('');
+  }
+}
+
+function formatMonthLabel(yyyymm) {
+  const [y, m] = yyyymm.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(m) - 1] + ' ' + y;
 }
 
 // Settings
